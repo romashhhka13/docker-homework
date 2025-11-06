@@ -1,0 +1,40 @@
+# Пользовательские файлы
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Папка настроек Visual Studio
+.vs/
+
+# Сборки
+[Bb]in/
+[Oo]bj/
+
+# Конфигурации
+appsettings.Development.json
+appsettings.Local.json
+launchSettings.json
+
+# Результаты тестов
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Пакеты NuGet
+**/packages/*
+*.nupkg
+*.snupkg
+
+# IDE Rider/VS Code
+.idea/
+.vscode/
+
+# Системные артефакты
+*.swp
+*.*~
+project.lock.json
+.DS_Store
+
+# Отчёты, логи
+*.log
+logs/
