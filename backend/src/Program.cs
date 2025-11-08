@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ShpaginApp.Auth;
@@ -7,6 +8,7 @@ using ShpaginApp.Exceptions;
 using ShpaginApp.Extentions;
 using ShpaginApp.Models;
 using ShpaginApp.Models.Validators;
+using ShpaginApp.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,15 +54,20 @@ builder.Services.AddSwaggerGenWithAuth();
 
 var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
 if (app.Environment.IsDevelopment())
 {
   app.UseSwagger();
   app.UseSwaggerUI();
-
-  using var scope = app.Services.CreateScope();
-  var services = scope.ServiceProvider;
-  SeedData.Initialize(services);
 }
+else
+{
+  var dbContext = scope.ServiceProvider.GetRequiredService<ShpaginAppContext>();
+  dbContext.Database.Migrate();
+}
+
+var services = scope.ServiceProvider;
+SeedData.Initialize(services);
 
 app.UseHttpsRedirection();
 
