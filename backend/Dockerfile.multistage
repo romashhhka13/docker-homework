@@ -49,4 +49,4 @@ USER dotnetuser
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD dotnet --info || exit 1
 
-ENTRYPOINT ["dotnet", "ef", "database", "update", "&&", "dotnet", "ShpaginApp.dll"]
+ENTRYPOINT ["dotnet", "ShpaginApp.dll"]

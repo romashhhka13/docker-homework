@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  webapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.multistage
+    image: backend-multistage:latest
+    ports:
+      - "5555:8080"
+    environment:
+      - ConnectionStrings__ShpaginAppContext=Host=db;Port=5432;Database=db;Username=postgres;Password=postgres
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "6666:5432"
+
+volumes:
+  pgdata:
