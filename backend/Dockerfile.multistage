@@ -26,9 +26,9 @@ RUN dotnet build "ShpaginApp.csproj" -c Release -o /app/build
 FROM build AS publish
 WORKDIR /src
 RUN dotnet publish "ShpaginApp.csproj" \
-    -c Release \
-    -o /app/publish \
-    --no-restore
+  -c Release \
+  -o /app/publish \
+  --no-restore
 
 # ============================================
 # Stage 4: Runtime (финальный образ)
@@ -46,7 +46,7 @@ COPY --from=publish /app/publish .
 # Переходим на непривилегированного пользователя
 USER dotnetuser
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD dotnet --info || exit 1
+ENV ASPNETCORE_URLS=http://0.0.0.0:80
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 ENTRYPOINT ["dotnet", "ShpaginApp.dll"]

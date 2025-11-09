@@ -1,0 +1,46 @@
+services:
+  app:
+    container_name: webapi-app
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.multistage
+    env_file:
+      - .env
+    networks:
+      - app-network
+    ports:
+      - "5555:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    container_name: webapi-postgres
+    image: postgres:17-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - app-network
+    volumes:
+      - ./.data/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5454:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
