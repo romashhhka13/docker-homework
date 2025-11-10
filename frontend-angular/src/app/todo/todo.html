@@ -1,0 +1,439 @@
+<div class="todo-layout">
+  <!-- Левая колонка - Виджет "Дела на сегодня" -->
+  <div class="left-column">
+    <div class="today-widget-section">
+      <div class="today-widget" 
+           [class.collapsed]="todayWidget.isCollapsed"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave($event)"
+           (drop)="onDropToToday($event)">
+        
+        <!-- Заголовок виджета -->
+        <div class="today-header" (click)="toggleTodayWidget()">
+          <div class="today-title">
+            <span class="today-icon">📅</span>
+            <h3>Сегодня</h3>
+            <span class="today-count">{{getTodayTodos().length}}</span>
+          </div>
+          <div class="today-actions">
+            <button 
+              class="btn-auto-add"
+              (click)="autoAddTodayTasks(); $event.stopPropagation()"
+              title="Автоматически добавить задачи на сегодня">
+              🔄
+            </button>
+            <button 
+              class="btn-clear-today"
+              (click)="clearTodayWidget(); $event.stopPropagation()"
+              title="Очистить список"
+              *ngIf="getTodayTodos().length > 0">
+              🗑️
+            </button>
+            <span class="collapse-icon">
+              {{ todayWidget.isCollapsed ? '▶' : '▼' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Содержимое виджета -->
+        <div class="today-content" *ngIf="!todayWidget.isCollapsed">
+          <!-- Сообщение о пустом списке -->
+          <div class="today-empty" *ngIf="getTodayTodos().length === 0">
+            <div class="empty-icon">📤</div>
+            <p>Перетащите сюда задачи</p>
+            <small>из списка справа</small>
+          </div>
+
+          <!-- Список задач на сегодня -->
+          <div class="today-list" *ngIf="getTodayTodos().length > 0">
+            <div *ngFor="let todo of getTodayTodos()" 
+                 class="today-item"
+                 [class.completed]="todo.isCompleted"
+                 draggable="true"
+                 (dragstart)="onDragStart(todo, $event)"
+                 (dragend)="onDragEnd($event)">             
+              <div class="today-item-content">
+                <div class="today-checkbox">
+                  <input 
+                    type="checkbox" 
+                    [checked]="todo.isCompleted"
+                    (change)="toggleComplete(todo.id)"
+                    class="checkbox"
+                  >
+                  <span class="checkmark"></span>
+                </div>               
+                <div class="today-text">
+                  <div class="today-title-text" [title]="todo.title">{{todo.title}}</div>
+                  <div class="today-meta">
+                    <span class="today-time" *ngIf="todo.deadline">
+                      ⏰ {{todo.deadline | date:'HH:mm'}}
+                    </span>
+                    <span class="today-badge" 
+                          [class.overdue]="isOverdue(todo.deadline) && !todo.isCompleted">
+                      {{isOverdue(todo.deadline) && !todo.isCompleted ? 'ПРОСРОЧЕНО' : 'СЕГОДНЯ'}}
+                    </span>
+                  </div>
+                </div>
+                
+                <button 
+                  class="btn-remove-from-today"
+                  (click)="removeFromToday(todo.id, $event)"
+                  title="Удалить из списка на сегодня">
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Правая колонка - Основной контент -->
+  <div class="right-column">
+    <div class="todo-container">
+      <div class="todo-header">
+        <h1 class="todo-title">📝 Мои задачи</h1>
+        <div class="stats">
+          <span class="stat completed">{{getCompletedCount()}} выполнено</span>
+          <span class="stat total">{{todos.length}} всего</span>
+        </div>
+      </div>
+
+      <!-- Секция фильтров -->
+      <div class="filters-section">
+        <div class="filter-buttons">
+          <button 
+            class="filter-btn"
+            [class.active]="isActiveFilter('all')"
+            (click)="setFilter('all')"
+          >
+            Все ({{todos.length}})
+          </button>
+          <button 
+            class="filter-btn"
+            [class.active]="isActiveFilter('active')"
+            (click)="setFilter('active')"
+          >
+            Активные ({{getActiveCount()}})
+          </button>
+          <button 
+            class="filter-btn"
+            [class.active]="isActiveFilter('completed')"
+            (click)="setFilter('completed')"
+          >
+            Выполненные ({{getCompletedCount()}})
+          </button>
+          <button 
+            class="filter-btn"
+            [class.active]="isActiveFilter('favorite')"
+            (click)="setFilter('favorite')"
+          >
+            Избранные ({{getFavoriteCount()}})
+          </button>
+          <button 
+            class="filter-btn"
+            [class.active]="isActiveFilter('missed')"
+            (click)="setFilter('missed')"
+          >
+            Просроченные ({{getMissedCount()}})
+          </button>
+        </div>
+      </div>
+
+      <!-- Контейнер для кнопки добавления -->
+      <div class="add-button-section" *ngIf="!showAddForm">
+        <button 
+          class="btn-add-todo"
+          (click)="toggleAddForm()"
+        >
+          <span class="btn-icon">➕</span>
+          <span class="btn-text">Добавить новое дело</span>
+        </button>
+      </div>
+
+      <!-- Контейнер для формы -->
+      <div class="add-form-section" *ngIf="showAddForm">
+        <div class="add-todo-form">
+          <h3>📋 Новое дело</h3>
+          
+          <div class="form-group">
+            <label for="title">Название *</label>
+            <input
+              type="text"
+              id="title"
+              [(ngModel)]="newTodoTitle"
+              placeholder="Введите название задачи..."
+              class="form-input"
+              maxlength="100"
+              #titleInput
+              [class.invalid]="!isTitleValid(newTodoTitle)"
+            >
+            <span class="char-count">{{newTodoTitle.length}}/100</span>
+             <div *ngIf="!isTitleValid(newTodoTitle)" class="error-message">
+               ⚠️ Название обязательно для заполнения!
+             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea
+              id="description"
+              [(ngModel)]="newTodoDescription"
+              placeholder="Введите описание задачи (необязательно)..."
+              class="form-textarea"
+              rows="3"
+              maxlength="500"
+            ></textarea>
+            <span class="char-count">{{newTodoDescription.length}}/500</span>
+          </div>
+
+          <div class="form-group">
+            <label for="deadline">Дедлайн</label>
+            <input
+              type="datetime-local"
+              id="deadline"
+              [(ngModel)]="newTodoDeadline"
+              class="form-input"
+              [class.invalid]="!isDeadlineValid"
+              [min]="minDate"
+            >
+            <div *ngIf="!isDeadlineValid" class="error-message">
+              ⚠️ Дедлайн не может быть раньше текущего времени!
+            </div>
+            <button 
+              type="button" 
+              class="clear-btn"
+              (click)="clearDeadline()"
+              *ngIf="newTodoDeadline"
+            >
+              × Очистить
+            </button>
+          </div>
+
+          <div class="form-actions">
+            <button 
+              class="btn-save"
+              (click)="addTodo()"
+              [disabled]="!newTodoTitle.trim()"
+            >
+              <span class="btn-icon">💾</span>
+              Сохранить
+            </button>
+            <button 
+              class="btn-cancel"
+              (click)="cancelAdd()"
+              type="button"
+            >
+              <span class="btn-icon">❌</span>
+              Отмена
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Секция статистики -->
+      <div class="stats-section">
+        <div class="stats-header" *ngIf="!showChart">
+          <button 
+            class="btn-toggle-chart"
+            (click)="toggleChart()"
+            type="button">
+            📊 Показать статистику
+          </button>
+        </div>
+
+        <div class="stats-header expanded" *ngIf="showChart">
+          <h3>📊 Статистика задач</h3>
+          <button 
+            class="btn-toggle-chart expanded"
+            (click)="toggleChart()"
+            type="button">
+            ✕ Скрыть
+          </button>
+        </div>
+
+        <!-- Контейнер для графиков -->
+        <div class="charts-container" *ngIf="showChart">
+          <!-- Левая колонка - гистограмма -->
+          <div class="chart-column">
+            <div class="chart-title">Дедлайны на 7 дней</div>
+            <div class="chart-wrapper">
+              <canvas 
+                baseChart
+                [data]="deadlineChartData"
+                [options]="deadlineChartOptions"
+                type="bar">
+              </canvas>
+            </div>
+          </div>
+
+          <!-- Правая колонка - круговая диаграмма -->
+          <div class="chart-column">
+            <div class="chart-title">Распределение задач</div>
+            <div class="chart-wrapper">
+              <canvas 
+                baseChart
+                [data]="chartData"
+                [options]="chartOptions"
+                [plugins]="chartPlugins"
+                type="doughnut">
+              </canvas>
+            </div>
+          </div>
+        </div>
+
+      <!-- Список дел -->
+      <div class="todo-list">
+        <!-- Существующий код списка задач -->
+        <div 
+          *ngFor="let todo of filteredTodos" 
+          class="todo-item"
+          [class.completed]="todo.isCompleted"
+          [class.favorite]="todo.isFavorite"
+          draggable="true"
+          (dragstart)="onDragStart(todo, $event)"
+          (dragend)="onDragEnd($event)">
+          
+          <!-- Обычный вид карточки -->
+          <div *ngIf="!isEditing(todo.id)" class="todo-normal-view">
+            <div class="todo-checkbox">
+              <input 
+                type="checkbox" 
+                [checked]="todo.isCompleted"
+                (change)="toggleComplete(todo.id)"
+                class="checkbox"
+              >
+              <span class="checkmark"></span>
+            </div>
+
+            <div class="todo-content">
+              <h3 class="todo-title-text">{{todo.title}}</h3>
+              <p class="todo-description">{{todo.description}}</p>
+              <div class="todo-meta">
+                <span class="todo-date">
+                  📅 Создано: {{todo.createDate | date:'dd.MM.yyyy HH:mm'}}
+                </span>
+                <span 
+                  *ngIf="todo.deadline" 
+                  class="todo-date"
+                  [class.overdue]="isOverdue(todo.deadline) && !todo.isCompleted"
+                >
+                  ⏰ Дедлайн: {{todo.deadline | date:'dd.MM.yyyy HH:mm'}}
+                  <span *ngIf="isOverdue(todo.deadline) && !todo.isCompleted" class="overdue-badge">
+                    ПРОСРОЧЕНО
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="todo-actions">
+              <button 
+                class="btn-edit"
+                (click)="startEdit(todo)"
+                title="отредактировать задачу"
+              >
+                ✏️
+              </button>
+              <button 
+                class="btn-favorite"
+                (click)="toggleFavorite(todo.id)"
+                [class.active]="todo.isFavorite"
+                [title]="todo.isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'"
+              >
+                ⭐
+              </button>
+              <button 
+                class="btn-delete"
+                (click)="deleteTodo(todo.id)"
+                title="Удалить задачу"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <!-- Форма редактирования -->
+          <div *ngIf="isEditing(todo.id)" class="todo-edit-form">
+            <div class="edit-form-container">
+              <h4>✏️ Редактирование задачи</h4>
+              
+              <div class="form-group">
+                <label>Название *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="editTitle"
+                  placeholder="Введите название задачи..."
+                  class="form-input"
+                  maxlength="100"
+                >
+                <span class="char-count">{{editTitle.length}}/100</span>
+              </div>
+
+              <div class="form-group">
+                <label>Описание</label>
+                <textarea
+                  [(ngModel)]="editDescription"
+                  placeholder="Введите описание задачи..."
+                  class="form-textarea"
+                  rows="3"
+                  maxlength="500"
+                ></textarea>
+                <span class="char-count">{{editDescription.length}}/500</span>
+              </div>
+
+              <div class="form-group">
+                <label>Дедлайн</label>
+                <input
+                  type="datetime-local"
+                  [(ngModel)]="editDeadline"
+                  class="form-input"
+                  [class.invalid]="!isEditDeadlineValid"
+                  [min]="minDate"
+                >
+                <div *ngIf="!isEditDeadlineValid" class="error-message">
+                  ⚠️ Дедлайн не может быть раньше текущего времени!
+                </div>
+                <button 
+                  type="button" 
+                  class="clear-btn"
+                  (click)="clearEditDeadline()"
+                  *ngIf="editDeadline"
+                >
+                  × Очистить
+                </button>
+              </div>
+
+              <div class="edit-actions">
+                <button 
+                  class="btn-save"
+                  (click)="saveEdit()"
+                  [disabled]="!editTitle.trim()"
+                >
+                  💾 Сохранить
+                </button>
+                <button 
+                  class="btn-cancel"
+                  (click)="cancelEdit()"
+                  type="button"
+                >
+                  ❌ Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Состояние пустого списка -->
+        <div *ngIf="todos.length === 0" class="empty-state">
+          <div class="empty-icon">🎉</div>
+          <h3>Все задачи выполнены!</h3>
+          <p>Добавьте новую задачу чтобы начать</p>
+          <button class="btn-add-todo" (click)="toggleAddForm()">
+            ➕ Добавить первое дело
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

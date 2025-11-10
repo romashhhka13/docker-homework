@@ -1,28 +1,16 @@
-# ============================================
-# Stage 1: Восстановление зависимостей (caching)
-# ============================================
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS restore
 WORKDIR /src
 
-# Копируем только файлы проекта для кэширования зависимостей
 COPY ["src/ShpaginApp.csproj", "."]
 RUN dotnet restore "ShpaginApp.csproj"
 
-# ============================================
-# Stage 2: Сборка приложения
-# ============================================
 FROM restore AS build
 WORKDIR /src
 
-# Копируем исходный код
 COPY src/ .
 
-# Собираем в Release режиме
 RUN dotnet build "ShpaginApp.csproj" -c Release -o /app/build
 
-# ============================================
-# Stage 3: Публикация
-# ============================================
 FROM build AS publish
 WORKDIR /src
 RUN dotnet publish "ShpaginApp.csproj" \
@@ -30,20 +18,14 @@ RUN dotnet publish "ShpaginApp.csproj" \
   -o /app/publish \
   --no-restore
 
-# ============================================
-# Stage 4: Runtime (финальный образ)
-# ============================================
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
-
-# Создаем непривилегированного пользователя для security best practices
-RUN useradd -m -u 1000 dotnetuser
 
 WORKDIR /app
 
-# Копируем опубликованное приложение из предыдущего stage
 COPY --from=publish /app/publish .
 
-# Переходим на непривилегированного пользователя
+RUN useradd -m -u 1000 dotnetuser
+
 USER dotnetuser
 
 ENV ASPNETCORE_URLS=http://0.0.0.0:80
