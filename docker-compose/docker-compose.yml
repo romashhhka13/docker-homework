@@ -5,7 +5,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile.multistage
     env_file:
-      - .env
+      - .app.env
     networks:
       - app-network
     ports:
@@ -23,17 +23,13 @@ services:
     container_name: webapi-postgres
     image: postgres:17-alpine
     env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      - .postgres.env
+    ports:
+      - "5454:5432"
     networks:
       - app-network
     volumes:
-      - ./.data/postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5454:5432"
+      - pg_data:/var/lib/postgresql/data
     logging:
       driver: "json-file"
       options:
@@ -44,3 +40,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  pg_data:
